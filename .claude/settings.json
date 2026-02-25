@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bun run src/discovery/cli.ts > /dev/null 2>&1"
+      }
+    ]
+  }
+}

@@ -118,6 +118,18 @@ Updated react agent.`
     expect(cached).toBeNull();
   });
 
+  test("pre-warmed cache is used without re-discovery", async () => {
+    // Simulates SessionStart hook having pre-warmed the cache
+    const context = await discoverContext(TEST_DIR);
+    await writeCache(TEST_DIR, context);
+
+    // readCache should return data without needing discoverContext
+    const cached = await readCache(TEST_DIR);
+    expect(cached).not.toBeNull();
+    expect(cached!.agents[0].name).toBe("react-specialist");
+    expect(cached!.skills[0].name).toBe("test-driven-development");
+  });
+
   test("handles corrupted cache gracefully", async () => {
     mkdirSync(join(TEST_DIR, ".claude", ".cache"), { recursive: true });
     writeFileSync(
