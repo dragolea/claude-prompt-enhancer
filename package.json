@@ -1,0 +1,15 @@
+{
+  "name": "claude-prompt-enhancer",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "bun-types": "^1.3.9"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
