@@ -15,6 +15,15 @@ const HOOK_COMMAND = [
   "fi",
 ].join(" ");
 
+function isOurHook(entry: any): boolean {
+  // New format: { matcher, hooks: [{ type, command }] }
+  if (Array.isArray(entry.hooks)) {
+    return entry.hooks.some((h: any) => h.command?.includes(HOOK_MARKER));
+  }
+  // Old format: { type, command }
+  return entry.command?.includes(HOOK_MARKER);
+}
+
 const remove = process.argv.includes("--remove");
 
 let settings: Record<string, any> = {};
@@ -28,7 +37,7 @@ if (remove) {
   const hooks = settings.hooks?.SessionStart;
   if (Array.isArray(hooks)) {
     settings.hooks.SessionStart = hooks.filter(
-      (h: any) => !h.command?.includes(HOOK_MARKER)
+      (h: any) => !isOurHook(h)
     );
     if (settings.hooks.SessionStart.length === 0) delete settings.hooks.SessionStart;
     if (settings.hooks && Object.keys(settings.hooks).length === 0) delete settings.hooks;
@@ -47,7 +56,7 @@ if (remove) {
   if (!Array.isArray(settings.hooks.SessionStart)) settings.hooks.SessionStart = [];
 
   const alreadyInstalled = settings.hooks.SessionStart.some(
-    (h: any) => h.command?.includes(HOOK_MARKER)
+    (h: any) => isOurHook(h)
   );
 
   if (alreadyInstalled) {
@@ -56,8 +65,8 @@ if (remove) {
   }
 
   settings.hooks.SessionStart.push({
-    type: "command",
-    command: HOOK_COMMAND,
+    matcher: {},
+    hooks: [{ type: "command", command: HOOK_COMMAND }],
   });
 }
 

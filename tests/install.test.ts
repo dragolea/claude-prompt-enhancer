@@ -92,11 +92,14 @@ describe("install.sh", () => {
 
     const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
     expect(settings.hooks?.SessionStart).toBeArray();
-    const hook = settings.hooks.SessionStart.find(
-      (h: any) => h.command?.includes("skills/enhance/scripts/cli.ts")
+    const entry = settings.hooks.SessionStart.find(
+      (e: any) =>
+        Array.isArray(e.hooks) &&
+        e.hooks.some((h: any) => h.command?.includes("skills/enhance/scripts/cli.ts"))
     );
-    expect(hook).toBeDefined();
-    expect(hook.type).toBe("command");
+    expect(entry).toBeDefined();
+    expect(entry.matcher).toEqual({});
+    expect(entry.hooks[0].type).toBe("command");
   });
 
   test("install preserves existing settings.json hooks", async () => {
@@ -123,8 +126,10 @@ describe("install.sh", () => {
     // Existing hook preserved
     expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.SessionStart[0].command).toBe("echo existing");
-    // Our hook added
-    expect(settings.hooks.SessionStart[1].command).toContain("skills/enhance/scripts/cli.ts");
+    // Our hook added in new format
+    const ourEntry = settings.hooks.SessionStart[1];
+    expect(ourEntry.matcher).toEqual({});
+    expect(ourEntry.hooks[0].command).toContain("skills/enhance/scripts/cli.ts");
     // Other settings preserved
     expect(settings.someOtherSetting).toBe(true);
   });
@@ -216,7 +221,10 @@ describe("uninstall.sh", () => {
       settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
       const hooks = settings.hooks?.SessionStart ?? [];
       const ourHook = hooks.find(
-        (h: any) => h.command?.includes("skills/enhance/scripts/cli.ts")
+        (e: any) =>
+          (Array.isArray(e.hooks) &&
+            e.hooks.some((h: any) => h.command?.includes("skills/enhance/scripts/cli.ts"))) ||
+          e.command?.includes("skills/enhance/scripts/cli.ts")
       );
       expect(ourHook).toBeUndefined();
     }
