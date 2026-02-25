@@ -43,6 +43,7 @@ describe("install.sh", () => {
       "parse-skill.ts",
       "parse-project.ts",
       "format-context.ts",
+      "setup-hook.ts",
     ];
     for (const script of expectedScripts) {
       expect(existsSync(join(INSTALL_DIR, "scripts", script))).toBe(true);
@@ -76,6 +77,56 @@ describe("install.sh", () => {
     );
     expect(content).toContain('from "./types"');
     expect(content).not.toContain('from "./discovery/types"');
+  });
+
+  test("install adds SessionStart hook to settings.json", async () => {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: installEnv,
+    });
+    await proc.exited;
+
+    const settingsPath = join(TEST_HOME, ".claude", "settings.json");
+    expect(existsSync(settingsPath)).toBe(true);
+
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(settings.hooks?.SessionStart).toBeArray();
+    const hook = settings.hooks.SessionStart.find(
+      (h: any) => h.command?.includes("skills/enhance/scripts/cli.ts")
+    );
+    expect(hook).toBeDefined();
+    expect(hook.type).toBe("command");
+  });
+
+  test("install preserves existing settings.json hooks", async () => {
+    // Create pre-existing settings with a custom hook
+    mkdirSync(join(TEST_HOME, ".claude"), { recursive: true });
+    const settingsPath = join(TEST_HOME, ".claude", "settings.json");
+    const existing = {
+      hooks: {
+        SessionStart: [{ type: "command", command: "echo existing" }],
+      },
+      someOtherSetting: true,
+    };
+    const { writeFileSync: wfs } = await import("fs");
+    wfs(settingsPath, JSON.stringify(existing));
+
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: installEnv,
+    });
+    await proc.exited;
+
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    // Existing hook preserved
+    expect(settings.hooks.SessionStart).toHaveLength(2);
+    expect(settings.hooks.SessionStart[0].command).toBe("echo existing");
+    // Our hook added
+    expect(settings.hooks.SessionStart[1].command).toContain("skills/enhance/scripts/cli.ts");
+    // Other settings preserved
+    expect(settings.someOtherSetting).toBe(true);
   });
 
   test("installed cli.ts runs and outputs valid JSON", async () => {
@@ -133,6 +184,42 @@ describe("uninstall.sh", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Uninstalled");
     expect(existsSync(INSTALL_DIR)).toBe(false);
+  });
+
+  test("uninstall removes SessionStart hook from settings.json", async () => {
+    // Install first
+    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: installEnv,
+    });
+    await installProc.exited;
+
+    // Verify hook exists
+    const settingsPath = join(TEST_HOME, ".claude", "settings.json");
+    let settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(settings.hooks?.SessionStart).toBeArray();
+
+    // Uninstall
+    const uninstallProc = Bun.spawn(
+      ["bash", join(REPO_ROOT, "uninstall.sh")],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        env: { ...process.env, HOME: TEST_HOME },
+      }
+    );
+    await uninstallProc.exited;
+
+    // settings.json should be cleaned up (no hooks left = file removed or empty)
+    if (existsSync(settingsPath)) {
+      settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      const hooks = settings.hooks?.SessionStart ?? [];
+      const ourHook = hooks.find(
+        (h: any) => h.command?.includes("skills/enhance/scripts/cli.ts")
+      );
+      expect(ourHook).toBeUndefined();
+    }
   });
 
   test("exits cleanly when not installed", async () => {

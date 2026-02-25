@@ -46,6 +46,14 @@ cp "$SRC_DIR/src/format-context.ts" "$INSTALL_DIR/scripts/"
 sed -i.bak 's|from "./discovery/types"|from "./types"|' "$INSTALL_DIR/scripts/format-context.ts"
 rm -f "$INSTALL_DIR/scripts/format-context.ts.bak"
 
+# Copy and run hook setup
+cp "$SRC_DIR/src/setup-hook.ts" "$INSTALL_DIR/scripts/"
+if [ "$RUNTIME" = "bun" ]; then
+  bun "$INSTALL_DIR/scripts/setup-hook.ts"
+else
+  node --experimental-strip-types "$INSTALL_DIR/scripts/setup-hook.ts"
+fi
+
 # Cleanup temp dir if we cloned
 [ -n "$CLEANUP" ] && rm -rf "$CLEANUP"
 
