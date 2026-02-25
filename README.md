@@ -10,6 +10,30 @@ curl -fsSL https://raw.githubusercontent.com/dragolea/claude-prompt-enhancer/mai
 
 Requires `git` and either `bun` or `node` (v22.6+).
 
+### What gets installed
+
+The install script places the skill at `~/.claude/skills/enhance/`:
+
+```
+~/.claude/skills/enhance/
+├── SKILL.md              # Skill definition (Claude reads this on /enhance)
+└── scripts/
+    ├── cli.ts            # Discovery entry point
+    ├── discover.ts       # Walks .claude/agents/ and .claude/skills/
+    ├── cache.ts          # Stat-fingerprint cache for fast re-runs
+    ├── types.ts          # TypeScript interfaces
+    ├── parse-agent.ts    # Parses agent .md frontmatter
+    ├── parse-skill.ts    # Parses SKILL.md frontmatter
+    ├── parse-project.ts  # Parses package.json
+    ├── load-config.ts    # Parses enhancer-config.json
+    ├── format-context.ts # Formats discovery output
+    └── setup-hook.ts     # Manages SessionStart hook
+```
+
+It also adds a `SessionStart` hook to `~/.claude/settings.json` that pre-warms the discovery cache when you start a Claude Code session. This is merged non-destructively — your existing settings and hooks are preserved.
+
+No global binaries, no `node_modules`, no dependencies.
+
 ## Usage
 
 In any Claude Code session, type:
@@ -78,11 +102,7 @@ Create `.claude/enhancer-config.json` in your project to customize behavior:
 curl -fsSL https://raw.githubusercontent.com/dragolea/claude-prompt-enhancer/main/uninstall.sh | bash
 ```
 
-Or manually:
-
-```bash
-rm -rf ~/.claude/skills/enhance
-```
+This removes the skill files and cleans up the `SessionStart` hook from `~/.claude/settings.json`.
 
 ## Development
 
