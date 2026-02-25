@@ -25,6 +25,25 @@ async function walkDir(dir: string): Promise<string[]> {
   return files;
 }
 
+/** Truncate to first sentence (up to first `. `, `.` at end, or 120 chars). */
+function firstSentence(text: string): string {
+  // Match up to the first period followed by a space, end-of-string, or quote
+  const match = text.match(/^(.+?\.)\s/);
+  if (match) return match[1];
+  // If no sentence break, truncate at 120 chars
+  return text.length > 120 ? text.slice(0, 120) + "…" : text;
+}
+
+/** Remove keys with null/undefined values. */
+function stripNulls<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) continue;
+    result[key] = value;
+  }
+  return result as Partial<T>;
+}
+
 export async function discoverContext(
   projectRoot: string
 ): Promise<DiscoveredContext> {
@@ -40,7 +59,7 @@ export async function discoverContext(
     const content = await readFile(filePath, "utf-8");
     const category = basename(dirname(filePath));
     const agent = parseAgentFile(content, category);
-    if (agent) agents.push(agent);
+    if (agent) agents.push({ ...agent, description: firstSentence(agent.description) });
   }
 
   // Discover skills
@@ -54,7 +73,7 @@ export async function discoverContext(
       try {
         const content = await readFile(skillMd, "utf-8");
         const skill = parseSkillFile(content);
-        if (skill) skills.push(skill);
+        if (skill) skills.push({ ...skill, description: firstSentence(skill.description) });
       } catch {
         // SKILL.md doesn't exist in this dir
       }
@@ -97,10 +116,10 @@ export async function discoverContext(
     ? agents.filter((a) => !config!.excludeAgents.includes(a.name))
     : agents;
 
-  return {
+  return stripNulls({
     agents: filteredAgents,
     skills,
     project,
     config,
-  };
+  }) as DiscoveredContext;
 }

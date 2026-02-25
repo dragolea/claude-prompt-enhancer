@@ -21,7 +21,7 @@ async function benchCold(): Promise<{ ms: number; json: string }> {
   const start = Bun.nanoseconds();
   const context = await discoverContext(projectRoot);
   const ms = (Bun.nanoseconds() - start) / 1e6;
-  return { ms, json: JSON.stringify(context, null, 2) };
+  return { ms, json: JSON.stringify(context) };
 }
 
 async function benchWarm(): Promise<{ ms: number; json: string; hit: boolean }> {
@@ -29,7 +29,7 @@ async function benchWarm(): Promise<{ ms: number; json: string; hit: boolean }> 
   const cached = await readCache(projectRoot);
   const ms = (Bun.nanoseconds() - start) / 1e6;
   if (cached) {
-    return { ms, json: JSON.stringify(cached, null, 2), hit: true };
+    return { ms, json: JSON.stringify(cached), hit: true };
   }
   return { ms, json: "", hit: false };
 }
@@ -93,13 +93,23 @@ console.log(`  Output: ${warmJson.length} chars (~${warmTokens} tokens)`);
 console.log(`  All cache hits: ${allHits}`);
 console.log(`  Cache file size: ${cacheSize} bytes`);
 
+// Baseline: v1 output (pretty-printed, full descriptions, no null stripping)
+const BASELINE_CHARS = 9041;
+const baselineTokens = estimateTokens("x".repeat(BASELINE_CHARS));
+
 console.log("");
 console.log("=== COMPARISON ===");
 console.log(`  Speedup (avg): ${(coldAvg / warmAvg).toFixed(1)}x faster`);
 console.log(`  Speedup (min): ${(coldMin / warmMin).toFixed(1)}x faster`);
 console.log(`  Time saved (avg): ${(coldAvg - warmAvg).toFixed(2)} ms`);
-console.log(`  Token cost: identical (${coldTokens} tokens both paths)`);
 console.log(`  Output matches: ${coldJson === warmJson}`);
+
+console.log("");
+console.log("=== TOKEN COST (vs v1 baseline) ===");
+console.log(`  v1 baseline:   ${BASELINE_CHARS} chars (~${baselineTokens} tokens)`);
+console.log(`  v2 optimized:  ${coldJson.length} chars (~${coldTokens} tokens)`);
+console.log(`  Reduction:     ${((1 - coldJson.length / BASELINE_CHARS) * 100).toFixed(1)}% fewer chars`);
+console.log(`  Tokens saved:  ~${baselineTokens - coldTokens} per invocation`);
 
 // Cleanup
 try { rmSync(cachePath); } catch {}
