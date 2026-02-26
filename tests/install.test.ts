@@ -163,6 +163,174 @@ describe("install.sh", () => {
   });
 });
 
+describe("install.sh --project", () => {
+  const PROJECT_DIR = join(TEST_HOME, "my-project");
+  const PROJECT_INSTALL_DIR = join(PROJECT_DIR, ".claude", "skills", "enhance");
+  const projectEnv = { ...process.env, HOME: TEST_HOME, LOCAL_REPO: REPO_ROOT };
+
+  beforeEach(() => {
+    mkdirSync(PROJECT_DIR, { recursive: true });
+  });
+
+  test("installs to project .claude/skills/enhance/", async () => {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--project"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: projectEnv,
+      cwd: PROJECT_DIR,
+    });
+    const stdout = await new Response(proc.stdout).text();
+    const exitCode = await proc.exited;
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("project-level");
+    expect(existsSync(join(PROJECT_INSTALL_DIR, "SKILL.md"))).toBe(true);
+    expect(existsSync(join(PROJECT_INSTALL_DIR, "scripts", "cli.ts"))).toBe(true);
+  });
+
+  test("SKILL.md uses relative paths for project install", async () => {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--project"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: projectEnv,
+      cwd: PROJECT_DIR,
+    });
+    await proc.exited;
+
+    const skillContent = readFileSync(join(PROJECT_INSTALL_DIR, "SKILL.md"), "utf-8");
+    expect(skillContent).toContain(".claude/skills/enhance/scripts/cli.ts");
+    expect(skillContent).not.toContain("~/.claude/skills/enhance/scripts/cli.ts");
+  });
+
+  test("hook goes into project-level settings.json", async () => {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--project"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: projectEnv,
+      cwd: PROJECT_DIR,
+    });
+    await proc.exited;
+
+    const settingsPath = join(PROJECT_DIR, ".claude", "settings.json");
+    expect(existsSync(settingsPath)).toBe(true);
+
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    const entry = settings.hooks?.SessionStart?.find(
+      (e: any) =>
+        Array.isArray(e.hooks) &&
+        e.hooks.some((h: any) => h.command?.includes("skills/enhance/scripts/cli.ts"))
+    );
+    expect(entry).toBeDefined();
+    // Project-level hook should use relative path
+    expect(entry.hooks[0].command).toContain(".claude/skills/enhance/scripts/cli.ts");
+    expect(entry.hooks[0].command).not.toContain("~/.claude/skills/enhance/scripts/cli.ts");
+
+    // User-level settings should NOT have the hook
+    const userSettingsPath = join(TEST_HOME, ".claude", "settings.json");
+    if (existsSync(userSettingsPath)) {
+      const userSettings = JSON.parse(readFileSync(userSettingsPath, "utf-8"));
+      const userHook = userSettings.hooks?.SessionStart?.find(
+        (e: any) =>
+          Array.isArray(e.hooks) &&
+          e.hooks.some((h: any) => h.command?.includes("skills/enhance/scripts/cli.ts"))
+      );
+      expect(userHook).toBeUndefined();
+    }
+  });
+
+  test("user-level install still uses home paths", async () => {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: installEnv,
+    });
+    const stdout = await new Response(proc.stdout).text();
+    await proc.exited;
+
+    expect(stdout).toContain("user-level");
+
+    const skillContent = readFileSync(join(INSTALL_DIR, "SKILL.md"), "utf-8");
+    expect(skillContent).toContain("~/.claude/skills/enhance/scripts/cli.ts");
+  });
+});
+
+describe("uninstall.sh --project", () => {
+  const PROJECT_DIR = join(TEST_HOME, "my-project");
+  const PROJECT_INSTALL_DIR = join(PROJECT_DIR, ".claude", "skills", "enhance");
+  const projectEnv = { ...process.env, HOME: TEST_HOME, LOCAL_REPO: REPO_ROOT };
+
+  beforeEach(() => {
+    mkdirSync(PROJECT_DIR, { recursive: true });
+  });
+
+  test("removes project-level install", async () => {
+    // Install first
+    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--project"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: projectEnv,
+      cwd: PROJECT_DIR,
+    });
+    await installProc.exited;
+    expect(existsSync(PROJECT_INSTALL_DIR)).toBe(true);
+
+    // Uninstall
+    const uninstallProc = Bun.spawn(
+      ["bash", join(REPO_ROOT, "uninstall.sh"), "--project"],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        env: projectEnv,
+        cwd: PROJECT_DIR,
+      }
+    );
+    const stdout = await new Response(uninstallProc.stdout).text();
+    const exitCode = await uninstallProc.exited;
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Uninstalled");
+    expect(existsSync(PROJECT_INSTALL_DIR)).toBe(false);
+  });
+
+  test("uninstall removes hook from project settings.json", async () => {
+    // Install
+    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--project"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: projectEnv,
+      cwd: PROJECT_DIR,
+    });
+    await installProc.exited;
+
+    const settingsPath = join(PROJECT_DIR, ".claude", "settings.json");
+    let settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(settings.hooks?.SessionStart).toBeArray();
+
+    // Uninstall
+    const uninstallProc = Bun.spawn(
+      ["bash", join(REPO_ROOT, "uninstall.sh"), "--project"],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        env: projectEnv,
+        cwd: PROJECT_DIR,
+      }
+    );
+    await uninstallProc.exited;
+
+    if (existsSync(settingsPath)) {
+      settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      const hook = settings.hooks?.SessionStart?.find(
+        (e: any) =>
+          (Array.isArray(e.hooks) &&
+            e.hooks.some((h: any) => h.command?.includes("skills/enhance/scripts/cli.ts"))) ||
+          e.command?.includes("skills/enhance/scripts/cli.ts")
+      );
+      expect(hook).toBeUndefined();
+    }
+  });
+});
+
 describe("uninstall.sh", () => {
   test("removes installed files", async () => {
     // First install

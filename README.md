@@ -10,6 +10,16 @@ curl -fsSL https://raw.githubusercontent.com/dragolea/claude-prompt-enhancer/mai
 
 Requires `git` and either `bun` or `node` (v22.6+).
 
+### Project-level install
+
+To install scoped to a specific project (useful for teams sharing config via git):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dragolea/claude-prompt-enhancer/main/install.sh | bash -s -- --project
+```
+
+This installs to `.claude/skills/enhance/` in your current directory and adds the SessionStart hook to the project's `.claude/settings.json` instead of your user-level settings.
+
 ### What gets installed
 
 The install script places the skill at `~/.claude/skills/enhance/`:
@@ -103,7 +113,13 @@ Create `.claude/enhancer-config.json` in your project to customize behavior:
 curl -fsSL https://raw.githubusercontent.com/dragolea/claude-prompt-enhancer/main/uninstall.sh | bash
 ```
 
-This removes the skill files and cleans up the `SessionStart` hook from `~/.claude/settings.json`.
+For project-level installs:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dragolea/claude-prompt-enhancer/main/uninstall.sh | bash -s -- --project
+```
+
+This removes the skill files and cleans up the `SessionStart` hook from the corresponding settings file.
 
 ## Development
 

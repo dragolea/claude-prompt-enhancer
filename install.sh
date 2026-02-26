@@ -2,7 +2,20 @@
 set -e
 
 REPO="https://github.com/dragolea/claude-prompt-enhancer.git"
-INSTALL_DIR="$HOME/.claude/skills/enhance"
+
+# Parse flags
+PROJECT_INSTALL=false
+for arg in "$@"; do
+  case "$arg" in
+    --project) PROJECT_INSTALL=true ;;
+  esac
+done
+
+if [ "$PROJECT_INSTALL" = true ]; then
+  INSTALL_DIR="$PWD/.claude/skills/enhance"
+else
+  INSTALL_DIR="$HOME/.claude/skills/enhance"
+fi
 
 echo "Installing claude-prompt-enhancer..."
 
@@ -38,6 +51,12 @@ mkdir -p "$INSTALL_DIR/scripts"
 # Copy skill definition (distributed version)
 cp "$SRC_DIR/skill/SKILL.md" "$INSTALL_DIR/SKILL.md"
 
+# For project installs, rewrite paths in SKILL.md to use relative paths
+if [ "$PROJECT_INSTALL" = true ]; then
+  sed -i.bak 's|~/.claude/skills/enhance/scripts/cli.ts|.claude/skills/enhance/scripts/cli.ts|g' "$INSTALL_DIR/SKILL.md"
+  rm -f "$INSTALL_DIR/SKILL.md.bak"
+fi
+
 # Copy discovery scripts
 cp "$SRC_DIR/src/discovery/"*.ts "$INSTALL_DIR/scripts/"
 
@@ -48,15 +67,25 @@ rm -f "$INSTALL_DIR/scripts/format-context.ts.bak"
 
 # Copy and run hook setup
 cp "$SRC_DIR/src/setup-hook.ts" "$INSTALL_DIR/scripts/"
-if [ "$RUNTIME" = "bun" ]; then
-  bun "$INSTALL_DIR/scripts/setup-hook.ts"
+if [ "$PROJECT_INSTALL" = true ]; then
+  SETTINGS_PATH="$PWD/.claude/settings.json"
 else
-  node --experimental-strip-types "$INSTALL_DIR/scripts/setup-hook.ts"
+  SETTINGS_PATH="$HOME/.claude/settings.json"
+fi
+HOOK_ARGS="--settings-path $SETTINGS_PATH --install-dir $INSTALL_DIR"
+if [ "$RUNTIME" = "bun" ]; then
+  bun "$INSTALL_DIR/scripts/setup-hook.ts" $HOOK_ARGS
+else
+  node --experimental-strip-types "$INSTALL_DIR/scripts/setup-hook.ts" $HOOK_ARGS
 fi
 
 # Cleanup temp dir if we cloned
 [ -n "$CLEANUP" ] && rm -rf "$CLEANUP"
 
-echo "Installed claude-prompt-enhancer to $INSTALL_DIR"
+if [ "$PROJECT_INSTALL" = true ]; then
+  echo "Installed claude-prompt-enhancer to $INSTALL_DIR (project-level)"
+else
+  echo "Installed claude-prompt-enhancer to $INSTALL_DIR (user-level)"
+fi
 echo "Runtime: $RUNTIME"
 echo "Use /enhance in Claude Code to enhance your prompts."

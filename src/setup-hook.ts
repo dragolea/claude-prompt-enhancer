@@ -1,17 +1,28 @@
 // src/setup-hook.ts
-// Adds or removes the SessionStart hook from ~/.claude/settings.json
-// Usage: bun setup-hook.ts          (install)
-//        bun setup-hook.ts --remove  (uninstall)
+// Adds or removes the SessionStart hook from settings.json
+// Usage: bun setup-hook.ts [--settings-path <path>] [--install-dir <path>]          (install)
+//        bun setup-hook.ts --remove [--settings-path <path>] [--install-dir <path>]  (uninstall)
 import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 
-const SETTINGS_PATH = join(process.env.HOME!, ".claude", "settings.json");
+function getArgValue(flag: string): string | undefined {
+  const idx = process.argv.indexOf(flag);
+  return idx !== -1 && idx + 1 < process.argv.length ? process.argv[idx + 1] : undefined;
+}
+
+const SETTINGS_PATH = getArgValue("--settings-path") ?? join(process.env.HOME!, ".claude", "settings.json");
+const installDir = getArgValue("--install-dir") ?? join(process.env.HOME!, ".claude", "skills", "enhance");
+const isUserLevel = installDir.startsWith(join(process.env.HOME!, ".claude"));
+const scriptPath = isUserLevel
+  ? "~/.claude/skills/enhance/scripts/cli.ts"
+  : ".claude/skills/enhance/scripts/cli.ts";
+
 const HOOK_MARKER = "skills/enhance/scripts/cli.ts";
 const HOOK_COMMAND = [
   "if command -v bun &>/dev/null;",
-  "then bun ~/.claude/skills/enhance/scripts/cli.ts > /dev/null 2>&1;",
+  `then bun ${scriptPath} > /dev/null 2>&1;`,
   "elif command -v node &>/dev/null;",
-  "then node --experimental-strip-types ~/.claude/skills/enhance/scripts/cli.ts > /dev/null 2>&1;",
+  `then node --experimental-strip-types ${scriptPath} > /dev/null 2>&1;`,
   "fi",
 ].join(" ");
 
