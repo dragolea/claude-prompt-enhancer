@@ -51,24 +51,25 @@ In any Claude Code session, type:
 Produces something like:
 
 ```
-@debugger: Investigate the login flow in src/components/Login.tsx and
-src/services/auth.ts. Identify the root cause of the bug.
-@react-specialist: Fix the identified issue. Ensure existing tests at
-tests/components/Login.test.tsx pass. Run `bun test` after changes.
-If any step fails, stop and report before continuing.
+Use /systematic-debugging to investigate the login flow in src/components/Login.tsx
+and src/services/auth.ts. @debugger: Identify root cause using the 4-phase
+debugging workflow. Once root cause is found, use /test-driven-development —
+write a failing test first, then fix. Run `bun test` after changes.
+Use /verification-before-completion before claiming done.
 ```
 
 ```
-/enhance refactor the services folder
+/enhance build a user dashboard
 ```
 
 Produces something like:
 
 ```
-@typescript-pro: Move all inline types from src/services/ to a central
-src/types/api.d.ts. @code-reviewer: Review each refactored file for
-correctness. @debugger: Remove all console.logs and unused imports from
-src/services/. Run `eslint . --fix` after each file is touched.
+Use /brainstorming to explore requirements for the user dashboard feature.
+Once design is agreed, use /writing-plans to break into tasks.
+Execute with /subagent-driven-development — @frontend-developer for UI
+components, @fullstack-developer for API endpoints.
+Use /verification-before-completion before claiming done.
 ```
 
 ## What It Does
@@ -76,7 +77,7 @@ src/services/. Run `eslint . --fix` after each file is touched.
 When you invoke `/enhance`, the skill:
 
 1. **Discovers context** — scans your `.claude/agents/`, `.claude/skills/`, and `package.json` to find available agents, skills, test/lint commands, and project framework
-2. **Enhances your prompt** — assigns relevant agents, adds file paths, defines execution order, and includes verification guards
+2. **Routes to skills first** — matches your task type (bug fix, new feature, refactor, etc.) to workflow skills like `/systematic-debugging`, `/test-driven-development`, or `/brainstorming`, then assigns agents to roles within those skill workflows
 3. **Shows a diff** — presents original vs enhanced prompt
 4. **Asks for confirmation** — you can accept, edit, or reject the enhancement
 
