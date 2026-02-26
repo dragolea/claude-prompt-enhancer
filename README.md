@@ -1,6 +1,6 @@
 # Claude Prompt Enhancer
 
-A Claude Code skill that transforms raw prompts into structured, agent-orchestrated prompts. It discovers your available agents, skills, and project context, then enhances your prompts with agent assignments, file paths, sequencing, and guards.
+A Claude Code skill that transforms raw prompts into structured, agent-orchestrated prompts. It discovers your available agents, skills, and project context, then enhances your prompts with agent assignments, file paths, sequencing, and guards. It assesses task complexity so small changes get lightweight inline guards while larger work gets full skill workflows.
 
 ## Installation
 
@@ -54,11 +54,23 @@ In any Claude Code session, type:
 
 ### Examples
 
+**Small task** — inline guards, no skill overhead:
+
+```
+/enhance add a --verbose flag to the CLI
+```
+
+```
+Add a --verbose flag to src/cli.ts — parse it in the arg parser and
+pass it to the logger. Run `bun test` after changes. Confirm tests
+pass before committing.
+```
+
+**Medium task** — skill-routed with agents:
+
 ```
 /enhance fix the login bug
 ```
-
-Produces something like:
 
 ```
 Use /systematic-debugging to investigate the login flow in src/components/Login.tsx
@@ -68,11 +80,11 @@ write a failing test first, then fix. Run `bun test` after changes.
 Use /verification-before-completion before claiming done.
 ```
 
+**Large task** — multi-skill chain:
+
 ```
 /enhance build a user dashboard
 ```
-
-Produces something like:
 
 ```
 Use /brainstorming to explore requirements for the user dashboard feature.
@@ -87,9 +99,10 @@ Use /verification-before-completion before claiming done.
 When you invoke `/enhance`, the skill:
 
 1. **Discovers context** — scans your `.claude/agents/`, `.claude/skills/`, and `package.json` to find available agents, skills, test/lint commands, and project framework
-2. **Routes to skills first** — matches your task type (bug fix, new feature, refactor, etc.) to workflow skills like `/systematic-debugging`, `/test-driven-development`, or `/brainstorming`, then assigns agents to roles within those skill workflows
-3. **Shows a diff** — presents original vs enhanced prompt
-4. **Asks for confirmation** — you can accept, edit, or reject the enhancement
+2. **Assesses complexity** — classifies the task as small, medium, or large based on scope and file count
+3. **Routes proportionally** — small tasks get inline guards (e.g., "Run `bun test` before committing"); medium/large tasks get full skill workflows like `/systematic-debugging` or `/test-driven-development` with agent assignments
+4. **Shows a diff** — presents original vs enhanced prompt
+5. **Asks for confirmation** — you can accept, edit, or reject the enhancement
 
 ## Configuration
 

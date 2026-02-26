@@ -27,6 +27,17 @@ This outputs JSON with all available agents (from `.claude/agents/`), skills (fr
 
 Using the discovered context and the user's raw prompt, create an enhanced version that:
 
+### Complexity Assessment
+Before routing to skills, classify the task size:
+
+| Size | Signals | Examples |
+|------|---------|----------|
+| **Small** | 1-2 files, < ~50 lines, single concern | Add a flag, fix a typo, tweak config, small UI change |
+| **Medium** | 3-5 files, cross-cutting concern | Bug fix requiring investigation, focused refactor |
+| **Large** | 5+ files, architectural impact | New feature, multi-component work, system redesign |
+
+Use this classification to decide how much skill scaffolding to apply (see Rules below).
+
 ### Skill Routing
 Match the task type to workflow skill(s) **first** — skills define the execution structure, agents fill roles within it.
 
@@ -42,8 +53,8 @@ Match the task type to workflow skill(s) **first** — skills define the executi
 Rules:
 - Always identify the matching workflow skill(s) FIRST
 - Chain skills when the task spans multiple phases (e.g., brainstorming → writing-plans)
-- `/verification-before-completion` should be appended to ANY task that produces code changes
-- `/test-driven-development` should be included for ANY implementation work
+- **Small tasks:** Do NOT reference `/verification-before-completion` or `/test-driven-development`. Instead, embed inline guards directly in the prompt (e.g., "Run `bun test` and confirm all pass before committing."). Keep the enhanced prompt lightweight — skill overhead isn't worth it for small changes.
+- **Medium/Large tasks:** Append `/verification-before-completion` to any task that produces code changes. Include `/test-driven-development` for any implementation work.
 
 ### Agent Assignment
 - Assign agents to roles defined by the chosen skill workflow — agents work within the skill's structure, not independently
@@ -97,6 +108,22 @@ If the user accepts, proceed to execute the enhanced prompt as if the user had t
 
 ## Examples
 
+### Small task (inline guards, no skill references)
+
+### Input
+```
+add a --verbose flag to the CLI
+```
+
+### Enhanced Output
+```
+Add a --verbose flag to src/cli.ts — parse it in the arg parser and
+pass it to the logger. Run `bun test` after changes. Confirm tests
+pass before committing.
+```
+
+### Medium task (skill references)
+
 ### Input
 ```
 fix the login bug
@@ -124,6 +151,8 @@ each extraction before moving. @code-reviewer: Review each refactored file.
 Run `eslint . --fix` after each file. Use /verification-before-completion
 before claiming done.
 ```
+
+### Large task (multi-skill chain)
 
 ### Input
 ```
