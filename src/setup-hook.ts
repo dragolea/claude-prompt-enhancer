@@ -65,7 +65,7 @@ if (remove) {
   }
 
   settings.hooks.SessionStart.push({
-    matcher: {},
+    matcher: "startup",
     hooks: [{ type: "command", command: HOOK_COMMAND }],
   });
 }

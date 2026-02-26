@@ -98,7 +98,7 @@ describe("install.sh", () => {
         e.hooks.some((h: any) => h.command?.includes("skills/enhance/scripts/cli.ts"))
     );
     expect(entry).toBeDefined();
-    expect(entry.matcher).toEqual({});
+    expect(entry.matcher).toBe("startup");
     expect(entry.hooks[0].type).toBe("command");
   });
 
@@ -128,7 +128,7 @@ describe("install.sh", () => {
     expect(settings.hooks.SessionStart[0].command).toBe("echo existing");
     // Our hook added in new format
     const ourEntry = settings.hooks.SessionStart[1];
-    expect(ourEntry.matcher).toEqual({});
+    expect(ourEntry.matcher).toBe("startup");
     expect(ourEntry.hooks[0].command).toContain("skills/enhance/scripts/cli.ts");
     // Other settings preserved
     expect(settings.someOtherSetting).toBe(true);
