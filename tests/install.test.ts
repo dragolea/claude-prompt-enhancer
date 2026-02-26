@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe("install.sh", () => {
   test("installs all expected files", async () => {
-    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -51,7 +51,7 @@ describe("install.sh", () => {
   });
 
   test("SKILL.md references installed script path", async () => {
-    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -64,7 +64,7 @@ describe("install.sh", () => {
   });
 
   test("format-context.ts has corrected import path", async () => {
-    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -80,7 +80,7 @@ describe("install.sh", () => {
   });
 
   test("install adds SessionStart hook to settings.json", async () => {
-    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -115,7 +115,7 @@ describe("install.sh", () => {
     const { writeFileSync: wfs } = await import("fs");
     wfs(settingsPath, JSON.stringify(existing));
 
-    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -136,7 +136,7 @@ describe("install.sh", () => {
 
   test("installed cli.ts runs and outputs valid JSON", async () => {
     // First install
-    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -239,7 +239,7 @@ describe("install.sh --project", () => {
   });
 
   test("user-level install still uses home paths", async () => {
-    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const proc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -334,7 +334,7 @@ describe("uninstall.sh --project", () => {
 describe("uninstall.sh", () => {
   test("removes installed files", async () => {
     // First install
-    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,
@@ -361,7 +361,7 @@ describe("uninstall.sh", () => {
 
   test("uninstall removes SessionStart hook from settings.json", async () => {
     // Install first
-    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh")], {
+    const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
       stderr: "pipe",
       env: installEnv,

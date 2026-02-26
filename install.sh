@@ -5,11 +5,31 @@ REPO="https://github.com/dragolea/claude-prompt-enhancer.git"
 
 # Parse flags
 PROJECT_INSTALL=false
+EXPLICIT_LEVEL=false
 for arg in "$@"; do
   case "$arg" in
-    --project) PROJECT_INSTALL=true ;;
+    --project) PROJECT_INSTALL=true; EXPLICIT_LEVEL=true ;;
+    --user) PROJECT_INSTALL=false; EXPLICIT_LEVEL=true ;;
   esac
 done
+
+# If no explicit level flag, ask the user interactively
+if [ "$EXPLICIT_LEVEL" = false ]; then
+  echo ""
+  echo "Where would you like to install?"
+  echo "  1) User-level (~/.claude/skills/) — available in all your projects"
+  echo "  2) Project-level (./.claude/skills/) — scoped to current project, shareable via git"
+  echo ""
+  choice=""
+  if [ -e /dev/tty ]; then
+    printf "Choose [1/2] (default: 1): "
+    read -r choice < /dev/tty 2>/dev/null || true
+  fi
+  case "$choice" in
+    2) PROJECT_INSTALL=true ;;
+    *) PROJECT_INSTALL=false ;;
+  esac
+fi
 
 if [ "$PROJECT_INSTALL" = true ]; then
   INSTALL_DIR="$PWD/.claude/skills/enhance"
