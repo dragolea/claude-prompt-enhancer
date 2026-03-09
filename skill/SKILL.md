@@ -7,7 +7,7 @@ description: "Enhance your prompts with agent orchestration, file paths, sequenc
 
 ## Overview
 
-Transform raw prompts into structured, agent-orchestrated prompts that leverage your available skills and subagents.
+Enhance raw prompts by injecting explicit skill references, agent assignments, file paths, and guards — ensuring Claude actually picks up and uses available skills and agents that it might otherwise overlook.
 
 ## Activation
 
@@ -23,25 +23,9 @@ if command -v bun &>/dev/null; then bun ~/.claude/skills/enhance/scripts/cli.ts;
 
 This outputs JSON with all available agents (from `.claude/agents/`), skills (from `.claude/skills/`), and project context (from `package.json`, etc.).
 
-## Step 2: Enhance the Prompt
+## Step 2: Assess Complexity
 
-Using the discovered context and the user's raw prompt, apply prompt engineering best practices to create an enhanced version.
-
-### Prompt Quality Principles
-
-Apply these cross-provider best practices (Google TCREI, Anthropic, OpenAI Six Strategies) when enhancing:
-
-1. **Lead with action verbs** — Start the task with: analyze, implement, fix, refactor, build, debug, create, extract
-2. **Be specific and measurable** — Replace vague qualifiers ("improve", "clean up", "make better") with concrete criteria. "Refactor to reduce duplication" → "Extract shared validation logic into src/utils/validate.ts"
-3. **Include context and motivation** — Add WHY behind constraints so the model generalizes correctly. "Use XML tags because the output feeds a parser" beats "Use XML tags"
-4. **Specify output expectations** — When the task produces artifacts, state the expected format, structure, or acceptance criteria
-5. **Use positive instructions** — "Write in TypeScript with strict types" beats "Don't use `any`"
-6. **Add grounding** — Reference specific files, functions, and test cases. "Investigate the login flow" → "Investigate the login flow in src/auth/login.ts and src/hooks/useAuth.ts"
-7. **One cognitive action per step** — For complex tasks, decompose via skill chaining rather than cramming into one prompt
-8. **Request reasoning for non-trivial decisions** — For debugging or architectural work, add "Investigate root cause before proposing fixes" or "Evaluate trade-offs before choosing an approach"
-
-### Complexity Assessment
-Before routing to skills, classify the task size:
+Classify the task before deciding how much to enhance:
 
 | Size | Signals | Examples |
 |------|---------|----------|
@@ -49,10 +33,20 @@ Before routing to skills, classify the task size:
 | **Medium** | 3-5 files, cross-cutting concern | Bug fix requiring investigation, focused refactor |
 | **Large** | 5+ files, architectural impact | New feature, multi-component work, system redesign |
 
-Use this classification to decide how much skill scaffolding to apply (see Rules below).
+## Step 3: Enhance the Prompt
 
-### Skill Routing
-Match the task type to workflow skill(s) **first** — skills define the execution structure, agents fill roles within it.
+Using the discovered context, enrich the user's raw prompt with explicit references that improve skill/agent pickup reliability.
+
+### What to Add
+
+1. **Skill references** — Explicitly name the skill(s) that match the task. This is the core value — Claude's auto-trigger often misses skills, but explicit `/skill-name` mentions ensure they fire.
+2. **Agent assignments** — Reference agents with `@AgentName:` prefix when their capabilities match. Only assign agents that genuinely fit.
+3. **File paths** — Search the codebase (Glob/Grep) for files matching prompt keywords. Add specific paths to ground the prompt in real code.
+4. **Guards** — Add verification steps using discovered test/lint commands. For small tasks, embed inline (e.g., "Run `bun test` after changes"). For medium/large, reference `/verification-before-completion`.
+
+### Skill Routing Table
+
+Match the task type to workflow skill(s) — skills define the execution structure, agents fill roles within it.
 
 | Task Type | Primary Skill(s) | Typical Agents |
 |-----------|------------------|----------------|
@@ -63,124 +57,111 @@ Match the task type to workflow skill(s) **first** — skills define the executi
 | UI/design work | `/frontend-design` or `/web-design-guidelines` | @frontend-developer |
 | Completion/merge | `/verification-before-completion` → `/finishing-a-development-branch` | @code-reviewer |
 
-Rules:
-- Always identify the matching workflow skill(s) FIRST
-- Chain skills when the task spans multiple phases (e.g., brainstorming → writing-plans) — this is prompt chaining, the most effective technique for complex tasks
-- **Small tasks:** Do NOT reference `/verification-before-completion` or `/test-driven-development`. Instead, embed inline guards directly in the prompt (e.g., "Run `bun test` and confirm all pass before committing."). Keep the enhanced prompt lightweight — skill overhead isn't worth it for small changes.
-- **Medium/Large tasks:** Append `/verification-before-completion` to any task that produces code changes. Include `/test-driven-development` for any implementation work.
+### Prompt Quality Principles
 
-### Agent Assignment
-- Assign agents to roles defined by the chosen skill workflow — agents work within the skill's structure, not independently
-- Reference them with `@AgentName:` prefix followed by their specific task
-- Only assign agents whose capabilities match the prompt — don't force-fit agents
-
-### Context Enrichment
-- Search the codebase for files matching prompt keywords (use Glob/Grep)
-- Add specific file paths to the enhanced prompt — grounding in real paths reduces hallucination and increases precision
-- Reference relevant test files
-- Include project conventions from the discovery output
-
-### Orchestration
-- Skills already define the primary execution sequence — use sequencing words ("First... Then... After... Finally...") only to clarify transitions between chained skills or agent handoffs
-- For multi-skill chains, make the phase boundaries explicit (Draft → Review → Refine pattern)
-- For debugging/reasoning tasks, enforce "investigate before proposing" ordering (reasoning before conclusion)
-
-### Guards
-- Add verification steps using discovered test/lint commands
-- Add "If any step fails, stop and report" guards
-- Add escape clauses for ambiguous tasks: "If the root cause is unclear after investigation, report findings before proceeding"
-- For agentic work, add persistence: "Do not stop until the task is complete and verified"
+1. **Lead with action verbs** — analyze, implement, fix, refactor, build, debug, create, extract
+2. **Be specific and measurable** — Replace vague qualifiers with concrete criteria
+3. **Include context and motivation** — Add WHY behind constraints
+4. **Add grounding** — Reference specific files, functions, and test cases
+5. **One cognitive action per step** — For complex tasks, decompose via skill chaining
+6. **Request reasoning for non-trivial decisions** — "Investigate root cause before proposing fixes"
 
 ### Rules
+
 - **Additive only** — never remove or alter the user's original intent
-- **Be specific** — use real file paths, real agent names, real commands (grounding = less hallucination)
-- **Be concise** — enhance, don't bloat. Aim for 3-8 lines max
+- **Be specific** — use real file paths, real agent names, real commands
+- **Be concise** — aim for 3-8 lines max. Enhance, don't bloat
 - **Positive framing** — tell what TO do, not what to avoid
 - **Respect aliases** — if config has aliases, use the user's preferred names
-- **Measurable over vague** — prefer concrete criteria over subjective qualifiers
+- **Small tasks: no heavy skills** — embed inline guards instead of referencing `/verification-before-completion` or `/test-driven-development`
+- **Medium/Large tasks** — chain skills when spanning multiple phases, append `/verification-before-completion` for any code changes
 
-## Step 3: Show Diff
+## Step 4: Present Enhancements
 
-Present the enhancement as a clear before/after comparison:
+Show ONLY what was added — the user already knows what they typed. Use `+` prefix for additions:
 
 ```
-┌─ Original ────────────────────────────────────┐
-│ [user's raw prompt]                           │
-└───────────────────────────────────────────────┘
-
-┌─ Enhanced ────────────────────────────────────┐
-│ [enhanced prompt with agents, paths, guards]  │
-└───────────────────────────────────────────────┘
+  [user's original prompt, unchanged]
+  + [skill reference added]
+  + [agent assignment added]
+  + [file paths added]
+  + [guard added]
 ```
 
-## Step 4: Ask for Confirmation
+### By complexity tier:
 
-Ask the user to choose one of:
+**Small tasks** — Skip confirmation. Show the additions briefly and execute immediately.
 
-1. **Accept** — Execute the enhanced prompt immediately
-2. **Edit** — Let the user modify the enhanced prompt, then execute
-3. **Reject** — Discard the enhancement, do nothing
+**Medium tasks** — Show additions with default-yes confirmation:
+```
+  Execute? [Y/n]
+```
 
-If the user accepts, proceed to execute the enhanced prompt as if the user had typed it directly.
+**Large tasks** — Show additions with default-yes confirmation:
+```
+  Execute? [Y/n]
+```
+
+If the user confirms (or hits Enter), execute the full enhanced prompt as if the user had typed it directly. If the user says no, discard and do nothing.
 
 ## Examples
 
-### Small task (inline guards, no skill references)
+### Small task — auto-execute, no confirmation
 
-### Input
-```
-add a --verbose flag to the CLI
-```
+**Input:** `add a --verbose flag to the CLI`
 
-### Enhanced Output
+**Output:**
 ```
-Add a --verbose flag to src/cli.ts — parse it in the arg parser and
-pass it to the logger. Run `bun test` after changes. Confirm tests
-pass before committing.
-```
+  add a --verbose flag to the CLI
+  + Target: src/cli.ts (arg parser + logger integration)
+  + Guard: Run `bun test` after changes
 
-### Medium task (skill references)
-
-### Input
-```
-fix the login bug
+Executing...
 ```
 
-### Enhanced Output
+### Medium task — show additions, confirm
+
+**Input:** `fix the login bug`
+
+**Output:**
 ```
-Use /systematic-debugging to investigate the login flow in src/components/Login.tsx
-and src/services/auth.ts. @debugger: Identify root cause using the 4-phase
-debugging workflow. Once root cause is found, use /test-driven-development —
-write a failing test first, then fix. Run `bun test` after changes.
-Use /verification-before-completion before claiming done.
+  fix the login bug
+  + Use /systematic-debugging for root cause analysis
+  + @debugger: investigate login flow
+  + Files: src/components/Login.tsx, src/services/auth.ts
+  + Then /test-driven-development — write failing test, then fix
+  + Guard: Run `bun test`, use /verification-before-completion
+
+  Execute? [Y/n]
 ```
 
-### Input
+### Medium task — refactor
+
+**Input:** `refactor the services folder`
+
+**Output:**
 ```
-refactor the services folder
+  refactor the services folder
+  + Use /test-driven-development for each extraction
+  + @typescript-pro: move inline types to src/types/api.d.ts
+  + @code-reviewer: review each refactored file
+  + Guard: Run `eslint . --fix` after each file, use /verification-before-completion
+
+  Execute? [Y/n]
 ```
 
-### Enhanced Output
-```
-Use /test-driven-development for the refactor of src/services/.
-@typescript-pro: Move inline types to src/types/api.d.ts — write tests for
-each extraction before moving. @code-reviewer: Review each refactored file.
-Run `eslint . --fix` after each file. Use /verification-before-completion
-before claiming done.
-```
+### Large task — multi-skill chain
 
-### Large task (multi-skill chain)
+**Input:** `build a user dashboard`
 
-### Input
+**Output:**
 ```
-build a user dashboard
-```
+  build a user dashboard
+  + Use /brainstorming to explore requirements first
+  + Then /writing-plans to break into tasks
+  + Execute with /subagent-driven-development
+  + @frontend-developer: UI components, @fullstack-developer: API endpoints
+  + Guard: use /verification-before-completion
 
-### Enhanced Output
-```
-Use /brainstorming to explore requirements for the user dashboard feature.
-Once design is agreed, use /writing-plans to break into tasks.
-Execute with /subagent-driven-development — @frontend-developer for UI
-components, @fullstack-developer for API endpoints.
-Use /verification-before-completion before claiming done.
+  Execute? [Y/n]
 ```
