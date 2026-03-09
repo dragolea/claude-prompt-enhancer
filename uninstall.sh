@@ -11,13 +11,15 @@ done
 
 if [ "$PROJECT_INSTALL" = true ]; then
   INSTALL_DIR="$PWD/.claude/skills/enhance"
+  AUDIT_INSTALL_DIR="$PWD/.claude/skills/audit"
   SETTINGS_PATH="$PWD/.claude/settings.json"
 else
   INSTALL_DIR="$HOME/.claude/skills/enhance"
+  AUDIT_INSTALL_DIR="$HOME/.claude/skills/audit"
   SETTINGS_PATH="$HOME/.claude/settings.json"
 fi
 
-if [ ! -d "$INSTALL_DIR" ]; then
+if [ ! -d "$INSTALL_DIR" ] && [ ! -d "$AUDIT_INSTALL_DIR" ]; then
   echo "claude-prompt-enhancer is not installed." >&2
   exit 0
 fi
@@ -34,4 +36,5 @@ if [ -f "$SETUP_HOOK" ]; then
 fi
 
 rm -rf "$INSTALL_DIR"
+rm -rf "$AUDIT_INSTALL_DIR"
 echo "Uninstalled claude-prompt-enhancer from $INSTALL_DIR"

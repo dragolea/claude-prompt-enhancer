@@ -3,7 +3,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "audit": "bun src/audit/cli.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.9",

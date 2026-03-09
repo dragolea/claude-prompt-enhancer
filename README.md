@@ -2,6 +2,8 @@
 
 A Claude Code skill that transforms raw prompts into structured, agent-orchestrated prompts. It discovers your available agents, skills, and project context, then enhances your prompts with agent assignments, file paths, sequencing, and guards. It assesses task complexity so small changes get lightweight inline guards while larger work gets full skill workflows.
 
+Also includes **`/audit`** — a skill conflict detection engine that scans your installed agents and skills for duplicate names, missing frontmatter, contradictory instructions, and other issues. Use it to keep your setup clean as you install skill packs from different sources.
+
 ## Installation
 
 ```bash
@@ -22,22 +24,40 @@ This installs to `.claude/skills/enhance/` in your current directory and adds th
 
 ### What gets installed
 
-The install script places the skill at `~/.claude/skills/enhance/`:
+The install script places the skills at `~/.claude/skills/`:
 
 ```
-~/.claude/skills/enhance/
-├── SKILL.md              # Skill definition (Claude reads this on /enhance)
-└── scripts/
-    ├── cli.ts            # Discovery entry point
-    ├── discover.ts       # Walks .claude/agents/ and .claude/skills/
-    ├── cache.ts          # Stat-fingerprint cache for fast re-runs
-    ├── types.ts          # TypeScript interfaces
-    ├── parse-agent.ts    # Parses agent .md frontmatter
-    ├── parse-skill.ts    # Parses SKILL.md frontmatter
-    ├── parse-project.ts  # Parses package.json
-    ├── load-config.ts    # Parses enhancer-config.json
-    ├── format-context.ts # Formats discovery output
-    └── setup-hook.ts     # Manages SessionStart hook
+~/.claude/skills/
+├── enhance/
+│   ├── SKILL.md              # Skill definition (Claude reads this on /enhance)
+│   └── scripts/
+│       ├── cli.ts            # Discovery entry point
+│       ├── discover.ts       # Walks .claude/agents/ and .claude/skills/
+│       ├── cache.ts          # Stat-fingerprint cache for fast re-runs
+│       ├── types.ts          # TypeScript interfaces
+│       ├── parse-agent.ts    # Parses agent .md frontmatter
+│       ├── parse-skill.ts    # Parses SKILL.md frontmatter
+│       ├── parse-project.ts  # Parses package.json
+│       ├── load-config.ts    # Parses enhancer-config.json
+│       ├── format-context.ts # Formats discovery output
+│       └── setup-hook.ts     # Manages SessionStart hook
+└── audit/
+    ├── SKILL.md              # Skill definition (Claude reads this on /audit)
+    └── scripts/
+        ├── cli.ts            # Audit entry point
+        ├── analyze.ts        # Runs all rules, returns report
+        ├── discover-for-audit.ts  # Discovery without excludeAgents filter
+        ├── parse-for-audit.ts     # Enriched parsers (filePath, body)
+        ├── format-report.ts  # Human-readable formatter
+        ├── types.ts          # Audit-specific types
+        └── rules/            # One file per detection rule
+            ├── duplicate-names.ts
+            ├── missing-frontmatter.ts
+            ├── excluded-agent-refs.ts
+            ├── overlapping-descriptions.ts
+            ├── cross-category-collisions.ts
+            ├── missing-skill-deps.ts
+            └── contradictory-instructions.ts
 ```
 
 It also adds a `SessionStart` hook to `~/.claude/settings.json` that pre-warms the discovery cache when you start a Claude Code session. This is merged non-destructively — your existing settings and hooks are preserved.
@@ -94,6 +114,63 @@ components, @fullstack-developer for API endpoints.
 Use /verification-before-completion before claiming done.
 ```
 
+## Audit
+
+In any Claude Code session, type:
+
+```
+/audit
+```
+
+This scans your `.claude/agents/` and `.claude/skills/` directories and reports:
+
+| Severity | Rule | What it detects |
+|----------|------|----------------|
+| **Error** | `duplicate-name` | Two agents or skills with the same name |
+| **Warning** | `missing-frontmatter` | `.md` files without valid YAML frontmatter |
+| **Warning** | `excluded-agent-ref` | Skill references an agent that config excludes |
+| **Warning** | `cross-category-collision` | Same agent name in different category directories |
+| **Warning** | `missing-skill-dep` | Skill body references `/skill` that isn't installed |
+| **Info** | `overlapping-descriptions` | Skills/agents with very similar descriptions |
+| **Info** | `contradictory-instructions` | "always X" vs "never X" across different files |
+
+The audit skill presents findings by severity and offers to fix actionable issues (rename duplicates, add missing frontmatter).
+
+You can also run the audit CLI directly:
+
+```bash
+# JSON output (for CI — exits 1 if errors found)
+bun src/audit/cli.ts
+
+# Human-readable output
+bun src/audit/cli.ts --human
+
+# Audit a specific project
+bun src/audit/cli.ts /path/to/project --human
+```
+
+### Example output
+
+```
+INVENTORY
+  Agents: 16 (across 4 categories)
+  Skills: 19
+
+FINDINGS (1 error, 0 warnings, 2 infos)
+
+  ERROR    duplicate-name
+    Two agents share the name "debugger":
+      .claude/agents/performance/debugger.md
+      .claude/agents/quality/debugger.md
+    Fix: Rename one to avoid ambiguity when using @agent references
+
+  INFO     overlapping-descriptions
+    Skills "tdd" and "verify" have similar descriptions (62% overlap)
+      .claude/skills/tdd/SKILL.md
+      .claude/skills/verify/SKILL.md
+    Fix: Differentiate their descriptions so Claude can route to the right skill
+```
+
 ## What It Does
 
 When you invoke `/enhance`, the skill:
@@ -141,7 +218,10 @@ This removes the skill files and cleans up the `SessionStart` hook from the corr
 git clone https://github.com/dragolea/claude-prompt-enhancer.git
 cd claude-prompt-enhancer
 bun install
-bun test
+bun test                        # run all tests (discovery + audit)
+bun test tests/audit/           # run only audit tests
+bun run audit                   # run audit CLI on current project
+bun run audit -- --human        # human-readable output
 ```
 
 ## License

@@ -6,6 +6,7 @@ import { join } from "path";
 const REPO_ROOT = join(import.meta.dir, "..");
 const TEST_HOME = join(import.meta.dir, "__fixtures_install__");
 const INSTALL_DIR = join(TEST_HOME, ".claude", "skills", "enhance");
+const AUDIT_INSTALL_DIR = join(TEST_HOME, ".claude", "skills", "audit");
 
 const installEnv = { ...process.env, HOME: TEST_HOME, LOCAL_REPO: REPO_ROOT };
 
@@ -48,6 +49,23 @@ describe("install.sh", () => {
     for (const script of expectedScripts) {
       expect(existsSync(join(INSTALL_DIR, "scripts", script))).toBe(true);
     }
+
+    // Verify audit skill installed
+    expect(existsSync(join(AUDIT_INSTALL_DIR, "SKILL.md"))).toBe(true);
+    // Verify audit scripts exist
+    const expectedAuditScripts = [
+      "cli.ts",
+      "analyze.ts",
+      "discover-for-audit.ts",
+      "parse-for-audit.ts",
+      "format-report.ts",
+      "types.ts",
+    ];
+    for (const script of expectedAuditScripts) {
+      expect(existsSync(join(AUDIT_INSTALL_DIR, "scripts", script))).toBe(true);
+    }
+    // Verify audit rules directory
+    expect(existsSync(join(AUDIT_INSTALL_DIR, "scripts", "rules", "duplicate-names.ts"))).toBe(true);
   });
 
   test("SKILL.md references installed script path", async () => {
@@ -332,7 +350,7 @@ describe("uninstall.sh --project", () => {
 });
 
 describe("uninstall.sh", () => {
-  test("removes installed files", async () => {
+  test("removes installed files including audit", async () => {
     // First install
     const installProc = Bun.spawn(["bash", join(REPO_ROOT, "install.sh"), "--user"], {
       stdout: "pipe",
@@ -341,6 +359,7 @@ describe("uninstall.sh", () => {
     });
     await installProc.exited;
     expect(existsSync(INSTALL_DIR)).toBe(true);
+    expect(existsSync(AUDIT_INSTALL_DIR)).toBe(true);
 
     // Then uninstall
     const uninstallProc = Bun.spawn(
@@ -357,6 +376,7 @@ describe("uninstall.sh", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Uninstalled");
     expect(existsSync(INSTALL_DIR)).toBe(false);
+    expect(existsSync(AUDIT_INSTALL_DIR)).toBe(false);
   });
 
   test("uninstall removes SessionStart hook from settings.json", async () => {

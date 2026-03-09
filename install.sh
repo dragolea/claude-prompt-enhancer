@@ -65,20 +65,55 @@ else
   SRC_DIR="$TMP/claude-prompt-enhancer"
 fi
 
-# Create install directory
+# Create install directories
 mkdir -p "$INSTALL_DIR/scripts"
+
+# Derive audit install dir from enhance install dir
+if [ "$PROJECT_INSTALL" = true ]; then
+  AUDIT_INSTALL_DIR="$PWD/.claude/skills/audit"
+else
+  AUDIT_INSTALL_DIR="$HOME/.claude/skills/audit"
+fi
+mkdir -p "$AUDIT_INSTALL_DIR/scripts"
 
 # Copy skill definition (distributed version)
 cp "$SRC_DIR/skill/SKILL.md" "$INSTALL_DIR/SKILL.md"
+
+# Copy audit skill definition
+cp "$SRC_DIR/skill/AUDIT-SKILL.md" "$AUDIT_INSTALL_DIR/SKILL.md"
 
 # For project installs, rewrite paths in SKILL.md to use relative paths
 if [ "$PROJECT_INSTALL" = true ]; then
   sed -i.bak 's|~/.claude/skills/enhance/scripts/cli.ts|.claude/skills/enhance/scripts/cli.ts|g' "$INSTALL_DIR/SKILL.md"
   rm -f "$INSTALL_DIR/SKILL.md.bak"
+  sed -i.bak 's|~/.claude/skills/audit/scripts/cli.ts|.claude/skills/audit/scripts/cli.ts|g' "$AUDIT_INSTALL_DIR/SKILL.md"
+  rm -f "$AUDIT_INSTALL_DIR/SKILL.md.bak"
 fi
 
 # Copy discovery scripts
 cp "$SRC_DIR/src/discovery/"*.ts "$INSTALL_DIR/scripts/"
+
+# Copy audit scripts (source files + rules)
+cp "$SRC_DIR/src/audit/"*.ts "$AUDIT_INSTALL_DIR/scripts/"
+mkdir -p "$AUDIT_INSTALL_DIR/scripts/rules"
+cp "$SRC_DIR/src/audit/rules/"*.ts "$AUDIT_INSTALL_DIR/scripts/rules/"
+
+# Fix audit import paths for flat installed layout
+# Audit scripts reference ../discovery/* which needs to point to the enhance scripts dir
+if [ "$PROJECT_INSTALL" = true ]; then
+  ENHANCE_SCRIPTS=".claude/skills/enhance/scripts"
+else
+  ENHANCE_SCRIPTS="~/.claude/skills/enhance/scripts"
+fi
+for f in "$AUDIT_INSTALL_DIR/scripts/"*.ts; do
+  sed -i.bak "s|from \"../discovery/|from \"$ENHANCE_SCRIPTS/|" "$f"
+  rm -f "$f.bak"
+done
+# Fix the types import in rules/ (they reference ../types which is now in parent scripts dir)
+for f in "$AUDIT_INSTALL_DIR/scripts/rules/"*.ts; do
+  sed -i.bak 's|from "../types"|from "../types"|' "$f"
+  rm -f "$f.bak"
+done
 
 # Copy format-context.ts and fix import path for flat directory structure
 cp "$SRC_DIR/src/format-context.ts" "$INSTALL_DIR/scripts/"
@@ -109,3 +144,4 @@ else
 fi
 echo "Runtime: $RUNTIME"
 echo "Use /enhance in Claude Code to enhance your prompts."
+echo "Use /audit to check for skill and agent conflicts."
