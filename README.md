@@ -99,10 +99,11 @@ Use /verification-before-completion before claiming done.
 When you invoke `/enhance`, the skill:
 
 1. **Discovers context** — scans your `.claude/agents/`, `.claude/skills/`, and `package.json` to find available agents, skills, test/lint commands, and project framework
-2. **Assesses complexity** — classifies the task as small, medium, or large based on scope and file count
-3. **Routes proportionally** — small tasks get inline guards (e.g., "Run `bun test` before committing"); medium/large tasks get full skill workflows like `/systematic-debugging` or `/test-driven-development` with agent assignments
-4. **Shows a diff** — presents original vs enhanced prompt
-5. **Asks for confirmation** — you can accept, edit, or reject the enhancement
+2. **Applies prompt best practices** — uses cross-provider principles (Google TCREI, Anthropic, OpenAI Six Strategies) to strengthen the prompt: action verbs, specific file paths, measurable criteria, positive framing, grounding, and reasoning-before-conclusion ordering
+3. **Assesses complexity** — classifies the task as small, medium, or large based on scope and file count
+4. **Routes proportionally** — small tasks get inline guards (e.g., "Run `bun test` before committing"); medium/large tasks get full skill workflows like `/systematic-debugging` or `/test-driven-development` with agent assignments
+5. **Shows a diff** — presents original vs enhanced prompt
+6. **Asks for confirmation** — you can accept, edit, or reject the enhancement
 
 ## Configuration
 

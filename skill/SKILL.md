@@ -25,7 +25,20 @@ This outputs JSON with all available agents (from `.claude/agents/`), skills (fr
 
 ## Step 2: Enhance the Prompt
 
-Using the discovered context and the user's raw prompt, create an enhanced version that:
+Using the discovered context and the user's raw prompt, apply prompt engineering best practices to create an enhanced version.
+
+### Prompt Quality Principles
+
+Apply these cross-provider best practices (Google TCREI, Anthropic, OpenAI Six Strategies) when enhancing:
+
+1. **Lead with action verbs** — Start the task with: analyze, implement, fix, refactor, build, debug, create, extract
+2. **Be specific and measurable** — Replace vague qualifiers ("improve", "clean up", "make better") with concrete criteria. "Refactor to reduce duplication" → "Extract shared validation logic into src/utils/validate.ts"
+3. **Include context and motivation** — Add WHY behind constraints so the model generalizes correctly. "Use XML tags because the output feeds a parser" beats "Use XML tags"
+4. **Specify output expectations** — When the task produces artifacts, state the expected format, structure, or acceptance criteria
+5. **Use positive instructions** — "Write in TypeScript with strict types" beats "Don't use `any`"
+6. **Add grounding** — Reference specific files, functions, and test cases. "Investigate the login flow" → "Investigate the login flow in src/auth/login.ts and src/hooks/useAuth.ts"
+7. **One cognitive action per step** — For complex tasks, decompose via skill chaining rather than cramming into one prompt
+8. **Request reasoning for non-trivial decisions** — For debugging or architectural work, add "Investigate root cause before proposing fixes" or "Evaluate trade-offs before choosing an approach"
 
 ### Complexity Assessment
 Before routing to skills, classify the task size:
@@ -52,7 +65,7 @@ Match the task type to workflow skill(s) **first** — skills define the executi
 
 Rules:
 - Always identify the matching workflow skill(s) FIRST
-- Chain skills when the task spans multiple phases (e.g., brainstorming → writing-plans)
+- Chain skills when the task spans multiple phases (e.g., brainstorming → writing-plans) — this is prompt chaining, the most effective technique for complex tasks
 - **Small tasks:** Do NOT reference `/verification-before-completion` or `/test-driven-development`. Instead, embed inline guards directly in the prompt (e.g., "Run `bun test` and confirm all pass before committing."). Keep the enhanced prompt lightweight — skill overhead isn't worth it for small changes.
 - **Medium/Large tasks:** Append `/verification-before-completion` to any task that produces code changes. Include `/test-driven-development` for any implementation work.
 
@@ -63,24 +76,28 @@ Rules:
 
 ### Context Enrichment
 - Search the codebase for files matching prompt keywords (use Glob/Grep)
-- Add specific file paths to the enhanced prompt
+- Add specific file paths to the enhanced prompt — grounding in real paths reduces hallucination and increases precision
 - Reference relevant test files
 - Include project conventions from the discovery output
 
 ### Orchestration
 - Skills already define the primary execution sequence — use sequencing words ("First... Then... After... Finally...") only to clarify transitions between chained skills or agent handoffs
-- For multi-skill chains, make the phase boundaries explicit
+- For multi-skill chains, make the phase boundaries explicit (Draft → Review → Refine pattern)
+- For debugging/reasoning tasks, enforce "investigate before proposing" ordering (reasoning before conclusion)
 
 ### Guards
 - Add verification steps using discovered test/lint commands
 - Add "If any step fails, stop and report" guards
-- Add timeout guards for potentially long operations
+- Add escape clauses for ambiguous tasks: "If the root cause is unclear after investigation, report findings before proceeding"
+- For agentic work, add persistence: "Do not stop until the task is complete and verified"
 
 ### Rules
 - **Additive only** — never remove or alter the user's original intent
-- **Be specific** — use real file paths, real agent names, real commands
+- **Be specific** — use real file paths, real agent names, real commands (grounding = less hallucination)
 - **Be concise** — enhance, don't bloat. Aim for 3-8 lines max
+- **Positive framing** — tell what TO do, not what to avoid
 - **Respect aliases** — if config has aliases, use the user's preferred names
+- **Measurable over vague** — prefer concrete criteria over subjective qualifiers
 
 ## Step 3: Show Diff
 
