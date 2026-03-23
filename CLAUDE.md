@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code skill (`/enhance`) that transforms raw prompts into structured, agent-orchestrated prompts. It discovers available agents, skills, and project context, then enhances prompts with agent assignments, file paths, sequencing, and guards proportional to task complexity.
+An automatic context injection system for Claude Code that bridges the gap between your natural language prompts and Claude Code's multi-agent orchestration capabilities. It silently injects relevant agents and skills as `additionalContext` on every prompt via hooks, so Claude always knows what tools are available — without you having to remember.
 
-Also includes `/audit` — a skill conflict detection engine that scans installed agents and skills for duplicates, missing frontmatter, contradictory instructions, and other issues. Exposed as both a CLI (`bun src/audit/cli.ts`) and an `/audit` skill.
+Also includes `/enhance` as an explicit prompt enhancement skill, and `/audit` — a skill conflict detection engine that scans installed agents and skills for duplicates, missing frontmatter, contradictory instructions, and other issues.
 
 ## Commands
 
@@ -32,7 +32,7 @@ The core runtime invoked by the SKILL.md bash command. Scans the user's `.claude
 3. **`parse-agent.ts`** — Parses agent `.md` frontmatter (name, description, category from parent dir).
 4. **`parse-skill.ts`** — Parses `SKILL.md` frontmatter (name, description).
 5. **`parse-project.ts`** — Extracts test/lint commands, framework, and language from `package.json`.
-6. **`load-config.ts`** — Reads optional `.claude/enhancer-config.json` (aliases, guards, conventions, excludeAgents).
+6. **`load-config.ts`** — Reads optional `.claude/enhancer-config.json` (aliases, guards, conventions, excludeAgents, autoInject, agentSkillMapping).
 7. **`cache.ts`** — Stat-fingerprint cache using `Bun.Glob` + `Bun.hash`. Invalidates when any `.md` file or `package.json` changes. Stored at `.claude/.cache/discovery-cache.json`.
 8. **`types.ts`** — Shared interfaces: `AgentInfo`, `SkillInfo`, `ProjectInfo`, `EnhancerConfig`, `DiscoveredContext`.
 
@@ -55,10 +55,31 @@ Skill conflict detection that **imports from** discovery (reuses parsers, types)
    - `missing-skill-deps.ts` — Skill body references `/skill` that isn't installed (warn)
    - `contradictory-instructions.ts` — "always X" vs "never X" across skills (info)
 
+### Injection Hooks (`src/injection/`)
+
+Auto context injection system — the core of the project. Two hooks that run silently:
+
+1. **`user-prompt-hook.ts`** — `UserPromptSubmit` hook. Reads discovery context, runs intent detection + relevance matching, outputs `additionalContext` (stdout) and CLI feedback (stderr). Respects `autoInject` config flag. Updates session context.
+2. **`agent-tool-hook.ts`** — `PreToolUse` hook with `Agent` matcher. Intercepts subagent spawning, applies 3-check logic (agent has skill? → skill relevant? → skill adds value?), injects relevant skills. Supports `agentSkillMapping` config overrides.
+3. **`format-stderr.ts`** — Compact CLI feedback for stderr (shows what was injected).
+4. **`format-context-injection.ts`** — Formats `additionalContext` string for Claude.
+5. **`agent-has-skill.ts`** — Check 1: does agent body already reference the skill?
+6. **`skill-adds-value.ts`** — Check 3: does skill add knowledge the agent lacks? (Jaccard comparison)
+7. **`session.ts`** — Reads/writes `.claude/session.json` for cross-prompt continuity (branch, stacks, timestamp).
+
+### Shared Utilities (`src/shared/`)
+
+Modules used by both injection hooks and audit:
+
+1. **`similarity.ts`** — Jaccard similarity + tokenization (extracted from audit).
+2. **`intent.ts`** — Detects prompt intent (debug, feature, refactor, test, review, devops, ui, performance, security) from keywords.
+3. **`stack-detect.ts`** — Detects project stack from config files (Expo, NestJS, Next.js, SAP CAP, Prisma).
+4. **`relevance.ts`** — Finds relevant agents/skills for a prompt using intent + Jaccard scoring.
+
 ### Other Source Files
 
 - **`src/format-context.ts`** — Formats `DiscoveredContext` into human-readable text (grouped agents, skills, project info). Note: the install script rewrites its import path from `./discovery/types` to `./types` for the flat installed layout.
-- **`src/setup-hook.ts`** — Adds/removes `SessionStart` hook in `settings.json` for cache pre-warming. Supports both user-level and project-level installs.
+- **`src/setup-hook.ts`** — Adds/removes `SessionStart`, `UserPromptSubmit`, and `PreToolUse` hooks in `settings.json`. Supports both user-level and project-level installs.
 
 ### Install/Uninstall
 
@@ -70,6 +91,8 @@ Skill conflict detection that **imports from** discovery (reuses parsers, types)
 All tests use `bun:test`. Test files mirror source structure:
 - `tests/discovery/` — unit tests for each parser and the full discovery pipeline
 - `tests/audit/` — unit tests for audit rules, analyzer, CLI, and formatter
+- `tests/shared/` — unit tests for similarity, intent detection, stack detection, relevance matching
+- `tests/injection/` — integration tests for hooks, formatters, checkers, session
 - `tests/format-context.test.ts` — formatting output tests
 - `tests/install.test.ts` — end-to-end install script test (uses `LOCAL_REPO` env var)
 
