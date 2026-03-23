@@ -30,6 +30,11 @@ export async function processUserPrompt(
   // Get discovered context (run discovery directly — cache is Bun-only and may not be available in tests)
   const context = await discoverContext(projectRoot);
 
+  // Check if auto-inject is disabled
+  if (context.config && context.config.autoInject === false) {
+    return { additionalContext: "", stderrFeedback: "" };
+  }
+
   // Find relevant agents and skills
   const agents = findRelevantAgents(prompt, context.agents);
   const skills = findRelevantSkills(prompt, context.skills);

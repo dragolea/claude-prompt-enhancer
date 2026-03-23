@@ -42,6 +42,16 @@ describe("processUserPrompt", () => {
     expect(result.additionalContext).toContain("nestjs");
   });
 
+  it("returns empty when autoInject is false", async () => {
+    writeFileSync(
+      join(TEST_DIR, ".claude", "enhancer-config.json"),
+      JSON.stringify({ autoInject: false })
+    );
+    const result = await processUserPrompt("fix the login bug", TEST_DIR);
+    expect(result.additionalContext).toBe("");
+    expect(result.stderrFeedback).toBe("");
+  });
+
   it("updates session context after injection", async () => {
     await processUserPrompt("fix the login bug", TEST_DIR);
     const sessionPath = join(TEST_DIR, ".claude", "session.json");
