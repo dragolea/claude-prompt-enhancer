@@ -3,10 +3,24 @@ import { findRelevantAgents, findRelevantSkills } from "../shared/relevance";
 import { detectStack } from "../shared/stack-detect";
 import { formatContextInjection } from "./format-context-injection";
 import { formatStderr } from "./format-stderr";
+import { updateSession } from "./session";
+import { execSync } from "child_process";
 
 export interface HookResult {
   additionalContext: string;
   stderrFeedback: string;
+}
+
+function getCurrentBranch(projectRoot: string): string | null {
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD", {
+      cwd: projectRoot,
+      encoding: "utf-8",
+      timeout: 2000,
+    }).trim();
+  } catch {
+    return null;
+  }
 }
 
 export async function processUserPrompt(
@@ -26,6 +40,13 @@ export async function processUserPrompt(
   // Format outputs
   const additionalContext = formatContextInjection(agents, skills, stacks);
   const stderrFeedback = formatStderr(agents, skills, stacks);
+
+  // Update session context (non-fatal)
+  const branch = getCurrentBranch(projectRoot);
+  await updateSession(projectRoot, {
+    branch: branch ?? undefined,
+    activeStacks: stacks.length > 0 ? stacks : undefined,
+  }).catch(() => {});
 
   return { additionalContext, stderrFeedback };
 }

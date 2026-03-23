@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from "bun:test";
 import { processUserPrompt } from "../../src/injection/user-prompt-hook";
-import { mkdirSync, writeFileSync, rmSync } from "fs";
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -40,5 +40,12 @@ describe("processUserPrompt", () => {
     writeFileSync(join(TEST_DIR, "nest-cli.json"), "{}");
     const result = await processUserPrompt("fix the auth bug", TEST_DIR);
     expect(result.additionalContext).toContain("nestjs");
+  });
+
+  it("updates session context after injection", async () => {
+    await processUserPrompt("fix the login bug", TEST_DIR);
+    const sessionPath = join(TEST_DIR, ".claude", "session.json");
+    const session = JSON.parse(readFileSync(sessionPath, "utf-8"));
+    expect(session.lastEnhancedAt).toBeDefined();
   });
 });
