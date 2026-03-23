@@ -93,6 +93,12 @@ fi
 # Copy discovery scripts
 cp "$SRC_DIR/src/discovery/"*.ts "$INSTALL_DIR/scripts/"
 
+# Copy shared modules
+cp "$SRC_DIR/src/shared/"*.ts "$INSTALL_DIR/scripts/"
+
+# Copy injection scripts
+cp "$SRC_DIR/src/injection/"*.ts "$INSTALL_DIR/scripts/"
+
 # Copy audit scripts (source files + rules)
 cp "$SRC_DIR/src/audit/"*.ts "$AUDIT_INSTALL_DIR/scripts/"
 mkdir -p "$AUDIT_INSTALL_DIR/scripts/rules"
@@ -114,11 +120,35 @@ for f in "$AUDIT_INSTALL_DIR/scripts/rules/"*.ts; do
   sed -i.bak 's|from "../types"|from "../types"|' "$f"
   rm -f "$f.bak"
 done
+# Fix audit rules that import from shared (overlapping-descriptions.ts)
+for f in "$AUDIT_INSTALL_DIR/scripts/rules/"*.ts; do
+  sed -i.bak "s|from \"../../shared/|from \"$ENHANCE_SCRIPTS/|" "$f"
+  rm -f "$f.bak"
+done
 
 # Copy format-context.ts and fix import path for flat directory structure
 cp "$SRC_DIR/src/format-context.ts" "$INSTALL_DIR/scripts/"
 sed -i.bak 's|from "./discovery/types"|from "./types"|' "$INSTALL_DIR/scripts/format-context.ts"
 rm -f "$INSTALL_DIR/scripts/format-context.ts.bak"
+
+# Rewrite shared module imports for flat layout
+sed -i.bak 's|from "../discovery/types"|from "./types"|' "$INSTALL_DIR/scripts/relevance.ts"
+rm -f "$INSTALL_DIR/scripts/relevance.ts.bak"
+
+# Rewrite injection script imports for flat layout
+for f in "$INSTALL_DIR/scripts/user-prompt-hook.ts" \
+         "$INSTALL_DIR/scripts/agent-tool-hook.ts"; do
+  sed -i.bak 's|from "../discovery/|from "./|g' "$f"
+  sed -i.bak 's|from "../shared/|from "./|g' "$f"
+  rm -f "$f.bak"
+done
+for f in "$INSTALL_DIR/scripts/format-context-injection.ts" \
+         "$INSTALL_DIR/scripts/format-stderr.ts"; do
+  sed -i.bak 's|from "../discovery/|from "./|g' "$f"
+  rm -f "$f.bak"
+done
+sed -i.bak 's|from "../shared/|from "./|g' "$INSTALL_DIR/scripts/skill-adds-value.ts"
+rm -f "$INSTALL_DIR/scripts/skill-adds-value.ts.bak"
 
 # Copy and run hook setup
 cp "$SRC_DIR/src/setup-hook.ts" "$INSTALL_DIR/scripts/"
@@ -143,5 +173,6 @@ else
   echo "Installed claude-prompt-enhancer to $INSTALL_DIR (user-level)"
 fi
 echo "Runtime: $RUNTIME"
-echo "Use /enhance in Claude Code to enhance your prompts."
+echo "Auto context injection is now active via hooks."
+echo "Use /enhance for explicit prompt enhancement."
 echo "Use /audit to check for skill and agent conflicts."
