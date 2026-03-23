@@ -8,6 +8,8 @@ describe("parseEnhancerConfig", () => {
       defaultGuards: ["Run tests after each change"],
       conventions: ["Always use Vitest"],
       excludeAgents: ["mobile-developer"],
+      autoInject: false,
+      agentSkillMapping: { debugger: ["systematic-debugging"] },
     };
     const result = parseEnhancerConfig(raw);
     expect(result).toEqual(raw);
@@ -20,6 +22,8 @@ describe("parseEnhancerConfig", () => {
       defaultGuards: [],
       conventions: [],
       excludeAgents: [],
+      autoInject: true,
+      agentSkillMapping: {},
     });
   });
 
@@ -30,5 +34,32 @@ describe("parseEnhancerConfig", () => {
     };
     const result = parseEnhancerConfig(raw);
     expect(result).not.toHaveProperty("unknownField");
+  });
+
+  test("parses autoInject field", () => {
+    const config = parseEnhancerConfig({ autoInject: true });
+    expect(config.autoInject).toBe(true);
+  });
+
+  test("defaults autoInject to true", () => {
+    const config = parseEnhancerConfig({});
+    expect(config.autoInject).toBe(true);
+  });
+
+  test("parses agentSkillMapping", () => {
+    const config = parseEnhancerConfig({
+      agentSkillMapping: {
+        debugger: ["systematic-debugging", "verification-before-completion"],
+      },
+    });
+    expect(config.agentSkillMapping.debugger).toEqual([
+      "systematic-debugging",
+      "verification-before-completion",
+    ]);
+  });
+
+  test("defaults agentSkillMapping to empty object", () => {
+    const config = parseEnhancerConfig({});
+    expect(config.agentSkillMapping).toEqual({});
   });
 });

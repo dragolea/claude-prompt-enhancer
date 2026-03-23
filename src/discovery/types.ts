@@ -22,6 +22,8 @@ export interface EnhancerConfig {
   defaultGuards: string[];
   conventions: string[];
   excludeAgents: string[];
+  autoInject: boolean;
+  agentSkillMapping: Record<string, string[]>;
 }
 
 export interface DiscoveredContext {

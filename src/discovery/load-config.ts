@@ -6,5 +6,7 @@ export function parseEnhancerConfig(raw: Record<string, any>): EnhancerConfig {
     defaultGuards: raw.defaultGuards ?? [],
     conventions: raw.conventions ?? [],
     excludeAgents: raw.excludeAgents ?? [],
+    autoInject: raw.autoInject ?? true,
+    agentSkillMapping: raw.agentSkillMapping ?? {},
   };
 }
