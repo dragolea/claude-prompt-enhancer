@@ -51,14 +51,36 @@ export async function processAgentToolUse(
   // Get discovered context
   const context = await discoverContext(projectRoot);
 
+  // Read agent body (needed for Check 1 in both mapping override and auto-detection)
+  const agentData = await readAgentBody(projectRoot, agentName);
+
+  // Check for manual mapping override
+  if (context.config?.agentSkillMapping?.[agentName]) {
+    const mappedSkillNames = context.config.agentSkillMapping[agentName];
+    const mappedSkills = context.skills.filter((s) =>
+      mappedSkillNames.includes(s.name)
+    );
+    if (mappedSkills.length > 0) {
+      // Still apply Check 1 (agent already has skill)
+      const filtered = agentData
+        ? mappedSkills.filter((s) => !agentHasSkill(agentData.body, s.name))
+        : mappedSkills;
+
+      if (filtered.length > 0) {
+        const contextLines = filtered.map((s) => `  /${s.name} — ${s.description}`);
+        return {
+          additionalContext: "Relevant skills for this task:\n" + contextLines.join("\n"),
+          stderrFeedback: formatStderr([], filtered, []),
+        };
+      }
+    }
+  }
+
   // Find skills relevant to the subagent's prompt (Check 2)
   const relevantSkills = findRelevantSkills(prompt, context.skills);
   if (relevantSkills.length === 0) {
     return { additionalContext: "", stderrFeedback: "" };
   }
-
-  // Read agent body for 3-check logic
-  const agentData = await readAgentBody(projectRoot, agentName);
 
   // Apply 3-check filter
   const skillsToInject = relevantSkills.filter((skill) => {

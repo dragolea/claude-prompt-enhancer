@@ -59,4 +59,18 @@ describe("processAgentToolUse", () => {
     );
     expect(result.additionalContext).toBe("");
   });
+
+  it("uses agentSkillMapping override from config", async () => {
+    writeFileSync(
+      join(TEST_DIR, ".claude", "enhancer-config.json"),
+      JSON.stringify({
+        agentSkillMapping: {
+          debugger: ["test-driven-development"],
+        },
+      })
+    );
+    const result = await processAgentToolUse("debugger", "do something", TEST_DIR);
+    // Should inject tdd even though prompt doesn't match — config override
+    expect(result.additionalContext).toContain("test-driven-development");
+  });
 });
