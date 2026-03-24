@@ -120,8 +120,9 @@ if (isDirectRun) {
 
   try {
     const hookData = JSON.parse(input);
-    const agentName = hookData.input?.subagent_type ?? hookData.input?.agent ?? "";
-    const prompt = hookData.input?.prompt ?? "";
+    const toolInput = hookData.tool_input ?? hookData.input ?? {};
+    const agentName = toolInput.subagent_type ?? toolInput.agent ?? "";
+    const prompt = toolInput.prompt ?? "";
     const projectRoot = hookData.cwd ?? process.cwd();
 
     const { additionalContext, stderrFeedback } = await processAgentToolUse(
@@ -135,7 +136,8 @@ if (isDirectRun) {
     }
 
     if (additionalContext) {
-      console.log(JSON.stringify({ additionalContext }));
+      // Plain text to stdout is automatically added as context by Claude Code
+      console.log(additionalContext);
     }
   } catch (err) {
     process.stderr.write(`[enhance] agent hook error: ${err}\n`);

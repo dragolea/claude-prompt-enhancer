@@ -76,7 +76,8 @@ if (isDirectRun) {
     }
 
     if (additionalContext) {
-      console.log(JSON.stringify({ additionalContext }));
+      // Plain text to stdout is automatically added as context by Claude Code
+      console.log(additionalContext);
     }
   } catch (err) {
     // Silent failure — never block the user's prompt
