@@ -1,13 +1,13 @@
 ---
 name: enhance
-description: "Enhance your prompts with agent orchestration, file paths, sequencing, and guards. Usage: /enhance <your raw prompt>"
+description: "Enhance your prompts with agent orchestration, sequencing, and guards. Usage: /enhance <your raw prompt>"
 ---
 
 # Prompt Enhancer
 
 ## Overview
 
-Enhance raw prompts by injecting explicit skill references, agent assignments, file paths, and guards — ensuring Claude actually picks up and uses available skills and agents that it might otherwise overlook.
+Enhance raw prompts by injecting explicit skill references, agent assignments, and guards — ensuring Claude actually picks up and uses available skills and agents that it might otherwise overlook. Claude discovers relevant files on its own; the enhancer focuses on intent, orchestration, and verification.
 
 ## Activation
 
@@ -41,8 +41,9 @@ Using the discovered context, enrich the user's raw prompt with explicit referen
 
 1. **Skill references** — Explicitly name the skill(s) that match the task. This is the core value — Claude's auto-trigger often misses skills, but explicit `/skill-name` mentions ensure they fire.
 2. **Agent assignments** — Reference agents with `@AgentName:` prefix when their capabilities match. Only assign agents that genuinely fit.
-3. **File paths** — Search the codebase (Glob/Grep) for files matching prompt keywords. Add specific paths to ground the prompt in real code.
-4. **Guards** — Add verification steps using discovered test/lint commands. For small tasks, embed inline (e.g., "Run `bun test` after changes"). For medium/large, reference `/verification-before-completion`.
+3. **Guards** — Add verification steps using discovered test/lint commands. For small tasks, embed inline (e.g., "Run `bun test` after changes"). For medium/large, reference `/verification-before-completion`.
+
+**Do NOT add file paths.** Claude discovers files on its own via Glob/Grep/Read. Guessing paths risks being wrong or stale, and creates tunnel vision. If the user already mentioned specific files, keep them — but never add new ones.
 
 ### Skill Routing Table
 
@@ -62,14 +63,14 @@ Match the task type to workflow skill(s) — skills define the execution structu
 1. **Lead with action verbs** — analyze, implement, fix, refactor, build, debug, create, extract
 2. **Be specific and measurable** — Replace vague qualifiers with concrete criteria
 3. **Include context and motivation** — Add WHY behind constraints
-4. **Add grounding** — Reference specific files, functions, and test cases
+4. **Focus on intent** — Clarify what and why, not where (Claude finds files itself)
 5. **One cognitive action per step** — For complex tasks, decompose via skill chaining
 6. **Request reasoning for non-trivial decisions** — "Investigate root cause before proposing fixes"
 
 ### Rules
 
 - **Additive only** — never remove or alter the user's original intent
-- **Be specific** — use real file paths, real agent names, real commands
+- **Be specific** — use real agent names, real skill names, real commands
 - **Be concise** — aim for 3-8 lines max. Enhance, don't bloat
 - **Positive framing** — tell what TO do, not what to avoid
 - **Respect aliases** — if config has aliases, use the user's preferred names
