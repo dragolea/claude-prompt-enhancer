@@ -59,12 +59,12 @@ export async function processUserPrompt(
 // CLI entry point — only runs when executed directly
 const isDirectRun = process.argv[1]?.endsWith("user-prompt-hook.ts");
 if (isDirectRun) {
-  let input = "";
-  for await (const chunk of process.stdin) {
-    input += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-  }
-
   try {
+    let input = "";
+    for await (const chunk of process.stdin) {
+      input += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+    }
+
     const hookData = JSON.parse(input);
     const prompt = hookData.input?.prompt ?? hookData.prompt ?? "";
     const projectRoot = hookData.cwd ?? process.cwd();

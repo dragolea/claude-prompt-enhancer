@@ -164,6 +164,17 @@ else
   node --experimental-strip-types "$INSTALL_DIR/scripts/setup-hook.ts" $HOOK_ARGS
 fi
 
+# Add runtime artifacts to .gitignore for project-level installs
+if [ "$PROJECT_INSTALL" = true ]; then
+  GITIGNORE="$PWD/.gitignore"
+  ENTRIES=(".claude/session.json" ".claude/.cache/")
+  for entry in "${ENTRIES[@]}"; do
+    if [ ! -f "$GITIGNORE" ] || ! grep -qxF "$entry" "$GITIGNORE"; then
+      echo "$entry" >> "$GITIGNORE"
+    fi
+  done
+fi
+
 # Cleanup temp dir if we cloned
 [ -n "$CLEANUP" ] && rm -rf "$CLEANUP"
 

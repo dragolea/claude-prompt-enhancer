@@ -113,12 +113,12 @@ export async function processAgentToolUse(
 // CLI entry point — only runs when executed directly
 const isDirectRun = process.argv[1]?.endsWith("agent-tool-hook.ts");
 if (isDirectRun) {
-  let input = "";
-  for await (const chunk of process.stdin) {
-    input += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-  }
-
   try {
+    let input = "";
+    for await (const chunk of process.stdin) {
+      input += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+    }
+
     const hookData = JSON.parse(input);
     const toolInput = hookData.tool_input ?? hookData.input ?? {};
     const agentName = toolInput.subagent_type ?? toolInput.agent ?? "";
